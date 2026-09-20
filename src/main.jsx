@@ -1,3 +1,199 @@
-import React,{useEffect,useMemo,useState} from 'react';import{createRoot}from'react-dom/client';import'./styles.css';
-const seed=[{id:1,title:'The Extended Mind',authors:'Clark, A. & Chalmers, D.',year:1998,venue:'Analysis',tags:['具身认知','经典'],abstract:'本文提出心智延展论：当外部环境稳定地承担认知功能时，心智边界可以超越头脑与身体。',status:'阅读中',cite:'Clark, A. & Chalmers, D. (1998). The Extended Mind. Analysis.'},{id:2,title:'Situated Learning',authors:'Lave, J. & Wenger, E.',year:1991,venue:'Cambridge University Press',tags:['学习科学','社会'],abstract:'学习发生在真实情境的参与过程中，知识与共同体实践不可分割。',status:'待读',cite:'Lave, J. & Wenger, E. (1991). Situated Learning.'},{id:3,title:'Designing with Data',authors:'Miller, S.',year:2022,venue:'MIT Press',tags:['设计研究','方法'],abstract:'一套面向设计师的数据研究方法，讨论如何把定性洞察转化为可行动的设计决策。',status:'已读',cite:'Miller, S. (2022). Designing with Data.'}];const read=()=>{try{return JSON.parse(localStorage.getItem('research-library'))||seed}catch{return seed}};
-function App(){const[items,setItems]=useState(read);const[selected,setSelected]=useState(1);const[query,setQuery]=useState('');const[tag,setTag]=useState('全部');const[show,setShow]=useState(false);const[notice,setNotice]=useState('');const[form,setForm]=useState({title:'',authors:'',year:'2024',venue:'',abstract:'',tags:''});useEffect(()=>localStorage.setItem('research-library',JSON.stringify(items)),[items]);const tags=['全部',...new Set(items.flatMap(x=>x.tags))];const filtered=useMemo(()=>items.filter(x=>(tag==='全部'||x.tags.includes(tag))&&(`${x.title}${x.authors}${x.abstract}`.toLowerCase().includes(query.toLowerCase()))),[items,tag,query]);const cur=items.find(x=>x.id===selected)||items[0];const update=(k,v)=>setItems(items.map(x=>x.id===cur.id?{...x,[k]:v}:x));const add=()=>{if(!form.title)return;const p={...form,id:Date.now(),year:+form.year,tags:form.tags.split(',').map(x=>x.trim()).filter(Boolean),status:'待读',cite:`${form.authors} (${form.year}). ${form.title}. ${form.venue}.`};setItems([...items,p]);setSelected(p.id);setForm({title:'',authors:'',year:'2024',venue:'',abstract:'',tags:''});setShow(false);setNotice('文献已加入研究库')};const bib=()=>{navigator.clipboard?.writeText(cur.cite);setNotice('引用文本已复制')};const download=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([items.map(x=>x.cite).join('\n')],{type:'text/plain'}));a.download='references.txt';a.click();setNotice('引用列表已导出')};return <div className="app"><aside><div className="logo"><span>∴</span> LITERATURE</div><div className="library-head"><span>我的研究库</span><strong>{items.length}<small> 篇文献</small></strong></div><nav><button className="active">▤ <span>所有文献</span><b>{items.length}</b></button><button>▥ <span>待读</span><b>{items.filter(x=>x.status==='待读').length}</b></button><button>✓ <span>已读</span></button><button>☆ <span>收藏</span></button></nav><div className="side-tags"><small>标签</small>{tags.slice(1,5).map(t=><button onClick={()=>setTag(t)} key={t}># {t}</button>)}</div><div className="side-foot"><button>⚙ 偏好设置</button><small>本地数据库 · 已同步</small></div></aside><main><header><div><span className="crumb">RESEARCH / LIBRARY</span><h1>所有文献</h1></div><div className="actions"><button className="outline" onClick={download}>↓ 导出引用</button><button className="primary" onClick={()=>setShow(true)}>＋ 添加文献</button></div></header><div className="toolbar"><div className="search">⌕<input placeholder="搜索标题、作者或摘要…" value={query} onChange={e=>setQuery(e.target.value)}/>{query&&<button onClick={()=>setQuery('')}>×</button>}</div><div className="tag-filter">{tags.map(t=><button className={tag===t?'on':''} onClick={()=>setTag(t)} key={t}>{t}</button>)}</div></div><div className="body"><section className="paper-list">{filtered.map(p=><button className={'paper '+(selected===p.id?'selected':'')} onClick={()=>setSelected(p.id)} key={p.id}><div className="paper-year">{p.year}</div><div className="paper-copy"><h3>{p.title}</h3><p>{p.authors}</p><div>{p.tags.map(t=><span key={t}>#{t}</span>)}</div></div><small className={'status '+p.status}>{p.status}</small></button>)}{!filtered.length&&<div className="no-result">没有找到匹配的文献</div>}</section><section className="detail">{cur&&<><div className="detail-top"><span className="status reading">{cur.status}</span><button onClick={()=>setNotice('已加入收藏')}>☆ 收藏</button></div><h2>{cur.title}</h2><p className="authors">{cur.authors}</p><div className="cite-actions"><button onClick={bib}>▣ 复制引用</button><button onClick={()=>update('status',cur.status==='已读'?'待读':'已读')}>{cur.status==='已读'?'标记为待读':'标记为已读'}</button></div><div className="detail-section"><h4>摘要 <span>ABSTRACT</span></h4><p>{cur.abstract}</p></div><div className="detail-section"><h4>出版信息 <span>PUBLICATION</span></h4><div className="pub-grid"><div><small>出版物</small><strong>{cur.venue}</strong></div><div><small>年份</small><strong>{cur.year}</strong></div></div></div><div className="detail-section"><h4>引用文本 <span>BIBTEX / TEXT</span></h4><div className="cite-box">{cur.cite}<button onClick={bib}>复制</button></div></div><div className="detail-section"><h4>我的笔记 <span>PRIVATE</span></h4><textarea className="notes" placeholder="记录你的阅读想法…" value={cur.notes||''} onChange={e=>update('notes',e.target.value)}/></div></>}</section></div></main>{show&&<div className="modal-bg"><div className="modal"><button className="close" onClick={()=>setShow(false)}>×</button><span className="crumb">NEW REFERENCE</span><h2>添加一篇文献</h2><label>标题<input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} placeholder="论文或书籍标题"/></label><label>作者<input value={form.authors} onChange={e=>setForm({...form,authors:e.target.value})}/></label><div className="two"><label>年份<input type="number" value={form.year} onChange={e=>setForm({...form,year:e.target.value})}/></label><label>出版物<input value={form.venue} onChange={e=>setForm({...form,venue:e.target.value})}/></label></div><label>关键词<input value={form.tags} onChange={e=>setForm({...form,tags:e.target.value})} placeholder="用逗号分隔"/></label><label>摘要<textarea rows="3" value={form.abstract} onChange={e=>setForm({...form,abstract:e.target.value})}/></label><button className="primary full" onClick={add}>保存文献</button></div></div>}{notice&&<div className="toast">{notice}</div>}</div>};createRoot(document.getElementById('root')).render(<App/>);
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import './styles.css';
+
+import { buildSeed } from './domain/seed.js';
+import { loadState, saveState, uid } from './domain/store.js';
+import * as circ from './circulation/engine.js';
+
+import Sidebar from './ui/Sidebar.jsx';
+import ClockBar from './ui/ClockBar.jsx';
+import BookList from './ui/BookList.jsx';
+import BookDetail from './ui/BookDetail.jsx';
+import AddBookModal from './ui/AddBookModal.jsx';
+import Toast from './ui/Toast.jsx';
+
+const VIEW_TITLES = {
+  all: '全部馆藏',
+  mine: '我持有的书目',
+  holds: '待我取书',
+  queue: '我的排队预约',
+  overdue: '到期与逾期',
+};
+
+function App() {
+  const [state, setState] = useState(loadState);
+  const [, setTick] = useState(0);
+  const [selectedId, setSelectedId] = useState(1);
+  const [view, setView] = useState('all');
+  const [query, setQuery] = useState('');
+  const [tag, setTag] = useState('全部');
+  const [showAdd, setShowAdd] = useState(false);
+  const [toast, setToast] = useState(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const now = Date.now() + state.clockOffset;
+
+  // 重载后状态不漂移：逾期/保留失效全部在流通层按当前时间现算。
+  // 每 20 秒及每次推进模拟时钟时统一整理一次过期保留。
+  useEffect(() => {
+    const t = setInterval(() => {
+      const r = circ.sweep(stateRef.current, Date.now() + stateRef.current.clockOffset);
+      if (r.state !== stateRef.current) setState(r.state);
+      if (r.notices.length) setToast({ kind: 'ok', text: r.notices.join(' ') });
+      setTick((x) => x + 1);
+    }, 20000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => saveState(state), [state]);
+
+  const showOk = (text) => setToast({ kind: 'ok', text });
+  const showError = (error) => setToast({ kind: 'error', error });
+
+  // 所有操作先整理过期保留，再进入具体判定，保证基于最新事实
+  const apply = (fn, ...args) => {
+    const t = Date.now() + stateRef.current.clockOffset;
+    const swept = circ.sweep(stateRef.current, t);
+    const base = swept.state;
+    const res = fn(base, ...args, t);
+    if (!res.ok) { showError(res.error); return; }
+    setState(res.state);
+    if (res.notice) showOk(res.notice);
+    if (res.notices && res.notices.length) showOk(res.notices.join(' '));
+  };
+
+  const actions = {
+    borrow: (bookId) => apply(circ.borrow, bookId, state.currentReaderId),
+    reserve: (bookId) => apply(circ.reserve, bookId, state.currentReaderId),
+    ret: (copyId) => apply(circ.returnCopy, copyId),
+    renew: (copyId) => apply(circ.renew, copyId, state.currentReaderId),
+    pickup: (copyId) => apply(circ.pickup, copyId, state.currentReaderId),
+    cancel: (bookId) => apply(circ.cancelReservation, bookId, state.currentReaderId),
+  };
+
+  const advance = (ms) => {
+    const nextOffset = stateRef.current.clockOffset + ms;
+    const target = { ...stateRef.current, clockOffset: nextOffset };
+    const clockNow = Date.now() + nextOffset;
+    const r = circ.sweep(target, clockNow);
+    setState(r.state);
+    if (r.notices.length) setToast({ kind: 'ok', text: r.notices.join(' ') });
+    else setToast({ kind: 'ok', text: `时间已推进到 ${circ.fmtDate(clockNow)}（未触发保留变动）` });
+  };
+  const resetClock = () => setState((s) => ({ ...s, clockOffset: 0 }));
+
+  const selectReader = (id) => { setState((s) => ({ ...s, currentReaderId: id })); showOk(`已切换为「${stateRef.current.readers.find((r) => r.id === id).name}」身份办理`); };
+  const addReader = (name) => {
+    const id = uid('r');
+    setState((s) => ({ ...s, readers: [...s.readers, { id, name }], currentReaderId: id }));
+    showOk(`读者 ${name} 已登记，并切换为当前办理身份`);
+  };
+  const resetData = () => {
+    const fresh = buildSeed(Date.now());
+    setState(fresh);
+    setSelectedId(1);
+    setView('all');
+    showOk('已恢复初始演示流通数据');
+  };
+
+  const addBook = (book) => {
+    setState((s) => circ.addBookCopy(s, book));
+    const id = Math.max(0, ...stateRef.current.books.map((b) => b.id)) + 1;
+    setSelectedId(id);
+    setShowAdd(false);
+    showOk(`《${book.title}》已编目，副本 A 已上架`);
+  };
+  const addCopy = (bookId) => { setState((s) => circ.addCopy(s, bookId)); showOk('新副本已加工入库并上架'); };
+  const setNotes = (bookId, notes) => setState((s) => circ.updateBookNote(s, bookId, notes));
+  const cite = (book) => {
+    navigator.clipboard?.writeText(book.cite);
+    showOk('引用文本已复制');
+  };
+  const exportRefs = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([state.books.map((b) => b.cite).join('\n')], { type: 'text/plain' }));
+    a.download = 'references.txt';
+    a.click();
+    showOk('引用列表已导出');
+  };
+
+  /* ---------- 视图过滤 ---------- */
+  const visibleBooks = useMemo(() => {
+    const rid = state.currentReaderId;
+    let base = state.books;
+    if (view === 'mine') base = base.filter((b) => state.copies.some((c) => c.bookId === b.id && c.holderId === rid && (c.state === 'loan' || c.state === 'hold')));
+    if (view === 'holds') base = base.filter((b) => state.copies.some((c) => c.bookId === b.id && c.holderId === rid && c.state === 'hold'));
+    if (view === 'queue') base = base.filter((b) => (state.queues[b.id] || []).some((q) => q.readerId === rid));
+    if (view === 'overdue') base = base.filter((b) => state.copies.some((c) => c.bookId === b.id && ((c.state === 'loan' && c.dueAt <= now) || (c.state === 'hold' && c.holdUntil <= now))));
+    const q = query.trim().toLowerCase();
+    return base.filter((b) => (tag === '全部' || b.tags.includes(tag))
+      && (!q || `${b.title}${b.authors}${b.abstract}`.toLowerCase().includes(q)));
+  }, [state, view, query, tag, now]);
+
+  const tags = useMemo(() => ['全部', ...new Set(state.books.flatMap((b) => b.tags))], [state.books]);
+  const counts = useMemo(() => {
+    const rid = state.currentReaderId;
+    return {
+      all: state.books.length,
+      mine: state.copies.filter((c) => c.holderId === rid && (c.state === 'loan' || c.state === 'hold')).length,
+      holds: state.copies.filter((c) => c.holderId === rid && c.state === 'hold').length,
+      queue: state.books.filter((b) => (state.queues[b.id] || []).some((q) => q.readerId === rid)).length,
+      overdue: state.books.filter((b) => state.copies.some((c) => c.bookId === b.id && ((c.state === 'loan' && c.dueAt <= now) || (c.state === 'hold' && c.holdUntil <= now)))).length,
+    };
+  }, [state, now]);
+
+  const currentBook = state.books.find((b) => b.id === selectedId) || visibleBooks[0] || state.books[0];
+
+  return (
+    <div className="app">
+      <Sidebar
+        state={state} view={view} setView={setView} counts={counts} now={now}
+        onSelectReader={selectReader} onAddReader={addReader} onResetData={resetData}
+      />
+      <main>
+        <header>
+          <div>
+            <span className="crumb">RESEARCH / CIRCULATION DESK</span>
+            <h1>{VIEW_TITLES[view]}</h1>
+          </div>
+          <div className="actions">
+            <button className="outline" onClick={exportRefs}>↓ 导出引用</button>
+            <button className="primary" onClick={() => setShowAdd(true)}>＋ 添加馆藏</button>
+          </div>
+        </header>
+
+        <div className="toolbar">
+          <div className="search">⌕
+            <input placeholder="搜索标题、作者或摘要…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            {query && <button onClick={() => setQuery('')}>×</button>}
+          </div>
+          <div className="tag-filter">
+            {tags.map((t) => <button key={t} className={tag === t ? 'on' : ''} onClick={() => setTag(t)}>{t}</button>)}
+          </div>
+        </div>
+
+        <ClockBar clockNow={now} offset={state.clockOffset} onAdvance={advance} onReset={resetClock} />
+
+        <div className="body">
+          <BookList
+            state={state} items={visibleBooks} selectedId={currentBook?.id}
+            onSelect={setSelectedId} now={now}
+          />
+          <BookDetail
+            state={state} book={currentBook} now={now}
+            onBorrow={actions.borrow} onReserve={actions.reserve} onReturn={actions.ret}
+            onRenew={actions.renew} onPickup={actions.pickup} onCancelReserve={actions.cancel}
+            onAddCopy={addCopy} onCite={cite} onNotes={setNotes} onToast={showOk}
+          />
+        </div>
+      </main>
+
+      {showAdd && <AddBookModal onClose={() => setShowAdd(false)} onAdd={addBook} />}
+      <Toast toast={toast} onClose={() => setToast(null)} />
+    </div>
+  );
+}
+
+createRoot(document.getElementById('root')).render(<App />);
